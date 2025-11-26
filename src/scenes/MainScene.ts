@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import gorillaPurpleSheet from "@assets/gorilla1.png";
+import gorillaPurpleAltSheet from "@assets/gorilla.png";
 
 const TILESET_CONFIG = [
   { name: "Hills", key: "tiles-hills", file: "Hills.png" },
@@ -59,21 +59,11 @@ interface NpcState {
 
 const NPC_DEFINITIONS: ReadonlyArray<NpcDefinition> = [
   {
-    id: "gorilla-classic",
-    textureKey: "gorilla",
-    assetPath: "gorrila.png",
-    frameWidth: 512,
-    frameHeight: 512,
-    scale: 0.051,
-    speed: 5,
-    depth: 2.5,
-  },
-  {
-    id: "gorilla-purple",
-    textureKey: "gorilla-purple",
-    assetPath: gorillaPurpleSheet,
-    frameWidth: 694,
-    frameHeight: 708,
+    id: "gorilla-purple-alt",
+    textureKey: "gorilla-purple-alt",
+    assetPath: gorillaPurpleAltSheet,
+    frameWidth: 646,
+    frameHeight: 640,
     scale: 0.037,
     speed: 5,
     depth: 2.4,
@@ -356,15 +346,26 @@ export class MainScene extends Phaser.Scene {
   }
 
   private ensureNpcAnimations(definition: NpcDefinition): void {
+    const texture = this.textures.get(definition.textureKey);
+    if (!texture) return;
+
+    const totalFrames = texture.frameTotal;
+
     NPC_ANIMATIONS.forEach(({ suffix, start, end }) => {
+      if (end >= totalFrames) return;
+
       const key = `${definition.textureKey}-${suffix}`;
       if (this.anims.exists(key)) return;
+
+      const frames = this.anims.generateFrameNumbers(definition.textureKey, {
+        start,
+        end,
+      });
+      if (frames.length === 0) return;
+
       this.anims.create({
         key,
-        frames: this.anims.generateFrameNumbers(definition.textureKey, {
-          start,
-          end,
-        }),
+        frames,
         frameRate: 6,
         repeat: -1,
       });
@@ -436,15 +437,23 @@ export class MainScene extends Phaser.Scene {
 
     const animationKey = `${state.definition.textureKey}-walk-${facing}`;
     state.lastDirection = facing;
-    state.currentAnimationKey = animationKey;
-    state.sprite.anims.play(animationKey, true);
-    state.isWalking = true;
+    state.sprite.setFlipX(facing === "left");
+
+    if (this.anims.exists(animationKey)) {
+      state.currentAnimationKey = animationKey;
+      state.sprite.anims.play(animationKey, true);
+      state.isWalking = true;
+      return;
+    }
+
+    this.makeNpcRest(state);
   }
 
   private makeNpcRest(state: NpcState): void {
     state.sprite.setVelocity(0, 0);
     state.sprite.anims.stop();
     state.sprite.setFrame(NPC_IDLE_FRAMES[state.lastDirection]);
+    state.sprite.setFlipX(state.lastDirection === "left");
     state.currentAnimationKey = undefined;
     state.isWalking = false;
   }
@@ -457,6 +466,7 @@ export class MainScene extends Phaser.Scene {
     if (velocity.lengthSq() === 0) {
       if (state.sprite.anims.isPlaying) state.sprite.anims.stop();
       state.sprite.setFrame(NPC_IDLE_FRAMES[state.lastDirection]);
+      state.sprite.setFlipX(state.lastDirection === "left");
       state.currentAnimationKey = undefined;
       state.isWalking = false;
     }

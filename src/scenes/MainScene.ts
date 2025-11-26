@@ -42,6 +42,7 @@ interface NpcDefinition {
   scale: number;
   speed: number;
   depth: number;
+  tint?: number;
 }
 
 interface NpcState {
@@ -67,6 +68,50 @@ const NPC_DEFINITIONS: ReadonlyArray<NpcDefinition> = [
     scale: 0.037,
     speed: 5,
     depth: 2.4,
+  },
+  {
+    id: "gorilla-amber",
+    textureKey: "gorilla-amber",
+    assetPath: gorillaPurpleAltSheet,
+    frameWidth: 646,
+    frameHeight: 640,
+    scale: 0.035,
+    speed: 6,
+    depth: 2.3,
+    tint: 0xffc107,
+  },
+  {
+    id: "gorilla-emerald",
+    textureKey: "gorilla-emerald",
+    assetPath: gorillaPurpleAltSheet,
+    frameWidth: 646,
+    frameHeight: 640,
+    scale: 0.038,
+    speed: 4,
+    depth: 2.2,
+    tint: 0x2ecc71,
+  },
+  {
+    id: "gorilla-sapphire",
+    textureKey: "gorilla-sapphire",
+    assetPath: gorillaPurpleAltSheet,
+    frameWidth: 646,
+    frameHeight: 640,
+    scale: 0.036,
+    speed: 7,
+    depth: 2.5,
+    tint: 0x3498db,
+  },
+  {
+    id: "gorilla-crimson",
+    textureKey: "gorilla-crimson",
+    assetPath: gorillaPurpleAltSheet,
+    frameWidth: 646,
+    frameHeight: 640,
+    scale: 0.034,
+    speed: 6,
+    depth: 2.1,
+    tint: 0xe74c3c,
   },
 ] as const;
 
@@ -305,6 +350,11 @@ export class MainScene extends Phaser.Scene {
     );
     sprite.setDepth(definition.depth);
     sprite.setScale(definition.scale);
+    if (definition.tint !== undefined) {
+      sprite.setTint(definition.tint);
+    } else {
+      sprite.clearTint();
+    }
     sprite.setCollideWorldBounds(true);
 
     const body = sprite.body as Phaser.Physics.Arcade.Body;
@@ -437,7 +487,7 @@ export class MainScene extends Phaser.Scene {
 
     const animationKey = `${state.definition.textureKey}-walk-${facing}`;
     state.lastDirection = facing;
-    state.sprite.setFlipX(facing === "left");
+    state.sprite.setFlipX(facing === "left" || facing === "right");
 
     if (this.anims.exists(animationKey)) {
       state.currentAnimationKey = animationKey;
@@ -453,7 +503,9 @@ export class MainScene extends Phaser.Scene {
     state.sprite.setVelocity(0, 0);
     state.sprite.anims.stop();
     state.sprite.setFrame(NPC_IDLE_FRAMES[state.lastDirection]);
-    state.sprite.setFlipX(state.lastDirection === "left");
+    state.sprite.setFlipX(
+      state.lastDirection === "left" || state.lastDirection === "right"
+    );
     state.currentAnimationKey = undefined;
     state.isWalking = false;
   }
@@ -466,7 +518,9 @@ export class MainScene extends Phaser.Scene {
     if (velocity.lengthSq() === 0) {
       if (state.sprite.anims.isPlaying) state.sprite.anims.stop();
       state.sprite.setFrame(NPC_IDLE_FRAMES[state.lastDirection]);
-      state.sprite.setFlipX(state.lastDirection === "left");
+      state.sprite.setFlipX(
+        state.lastDirection === "left" || state.lastDirection === "right"
+      );
       state.currentAnimationKey = undefined;
       state.isWalking = false;
     }

@@ -2,6 +2,8 @@ import Phaser from "phaser";
 import gorillaPurpleAltSheet from "@assets/gorilla.png";
 import dialogBoxTexture from "@assets/dialog box.png";
 import deleteIconTexture from "@assets/delete.png";
+import connectWalletTexture from "@assets/connect-wallet.png";
+import aboutProjectTexture from "@assets/about-project.png";
 import { MessageBox } from "../ui/MessageBox";
 
 const TILESET_CONFIG = [
@@ -156,6 +158,11 @@ export class MainScene extends Phaser.Scene {
   private activeNpcId?: string;
   private playerCanTriggerDialog: boolean = true;
   private isPlayerOverlappingNpc: boolean = false;
+  private connectWalletButton?: Phaser.GameObjects.Image;
+  private aboutProjectButton?: Phaser.GameObjects.Image;
+  private readonly uiButtonScale: number = 1;
+  private readonly uiButtonHoverMultiplier: number = 1.08;
+  private hudCamera?: Phaser.Cameras.Scene2D.Camera;
 
   constructor() {
     super("MainScene");
@@ -179,6 +186,8 @@ export class MainScene extends Phaser.Scene {
     this.load.image("dialog-box", dialogBoxTexture);
     this.load.image("button-normal", "button-normal.png");
     this.load.image("dialog-delete", deleteIconTexture);
+    this.load.image("connect-wallet", connectWalletTexture);
+    this.load.image("about-project", aboutProjectTexture);
   }
 
   create(): void {
@@ -231,8 +240,20 @@ export class MainScene extends Phaser.Scene {
     this.cameras.main.setZoom(6);
     this.cameras.main.startFollow(this.player, true, 0.2, 0.2);
 
+    const worldRenderables: Phaser.GameObjects.GameObject[] = [];
+    if (waterLayer) worldRenderables.push(waterLayer);
+    if (landLayer) worldRenderables.push(landLayer);
+    if (objectLayer) worldRenderables.push(objectLayer);
+    worldRenderables.push(this.player);
+    Object.values(this.npcs).forEach(({ sprite }) =>
+      worldRenderables.push(sprite)
+    );
+    this.initializeHudCamera(worldRenderables);
+
     // Create dialog box (initially hidden)
     this.createDialogBox();
+    this.createCornerButtons();
+    this.excludeButtonsFromWorldCamera();
   }
 
   update(): void {
@@ -744,5 +765,95 @@ export class MainScene extends Phaser.Scene {
     }
 
     this.activeNpcId = undefined;
+  }
+
+  private createCornerButtons(): void {
+    const connectWallet = this.add
+      .image(0, 0, "connect-wallet")
+      .setOrigin(1, 0)
+      .setDepth(200)
+      .setScrollFactor(0)
+      .setInteractive({ useHandCursor: true });
+    const aboutProject = this.add
+      .image(0, 0, "about-project")
+      .setOrigin(1, 0)
+      .setDepth(200)
+      .setScrollFactor(0)
+      .setInteractive({ useHandCursor: true });
+
+    connectWallet.setScale(this.uiButtonScale);
+    aboutProject.setScale(this.uiButtonScale);
+
+    this.applyButtonHover(connectWallet);
+    this.applyButtonHover(aboutProject);
+
+    connectWallet.on("pointerdown", () => {
+      this.events.emit("ui:connect-wallet");
+    });
+    aboutProject.on("pointerdown", () => {
+      this.events.emit("ui:about-project");
+    });
+
+    this.connectWalletButton = connectWallet;
+    this.aboutProjectButton = aboutProject;
+
+    this.positionCornerButtons();
+    this.scale.on("resize", this.positionCornerButtons, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.scale.off("resize", this.positionCornerButtons, this);
+    });
+  }
+
+  private initializeHudCamera(
+    worldRenderables: Phaser.GameObjects.GameObject[]
+  ): void {
+    const hudCamera = this.cameras.add(
+      0,
+      0,
+      this.scale.width,
+      this.scale.height
+    );
+    hudCamera.setScroll(0, 0);
+    hudCamera.setZoom(1);
+    hudCamera.ignore(worldRenderables);
+    this.hudCamera = hudCamera;
+    this.scale.on("resize", () =>
+      hudCamera.setViewport(0, 0, this.scale.width, this.scale.height)
+    );
+  }
+
+  private excludeButtonsFromWorldCamera(): void {
+    if (!this.connectWalletButton || !this.aboutProjectButton) return;
+    this.cameras.main.ignore([
+      this.connectWalletButton,
+      this.aboutProjectButton,
+    ]);
+  }
+
+  private positionCornerButtons(): void {
+    if (!this.connectWalletButton || !this.aboutProjectButton) return;
+    const { width } = this.scale;
+    const margin = 20;
+    const spacing = 12;
+
+    // HUD elements use screen-space coordinates (scroll factor 0); keep math independent of camera zoom.
+    this.connectWalletButton.setPosition(width - margin, margin);
+    const connectWidth = this.connectWalletButton.displayWidth;
+
+    this.aboutProjectButton.setPosition(
+      width - margin - connectWidth - spacing,
+      margin
+    );
+  }
+
+  private applyButtonHover(button: Phaser.GameObjects.Image): void {
+    button.on("pointerover", () => {
+      button.setScale(this.uiButtonScale * this.uiButtonHoverMultiplier);
+      this.positionCornerButtons();
+    });
+    button.on("pointerout", () => {
+      button.setScale(this.uiButtonScale);
+      this.positionCornerButtons();
+    });
   }
 }

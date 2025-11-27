@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import gorillaPurpleAltSheet from "@assets/gorilla.png";
+import dialogBoxTexture from "@assets/dialog box.png";
 
 const TILESET_CONFIG = [
   { name: "Hills", key: "tiles-hills", file: "Hills.png" },
@@ -173,7 +174,7 @@ export class MainScene extends Phaser.Scene {
         });
       }
     );
-    this.load.image("dialog-box", "/Premade dialog box  big.png");
+    this.load.image("dialog-box", dialogBoxTexture);
   }
 
   create(): void {
@@ -635,7 +636,7 @@ export class MainScene extends Phaser.Scene {
   private createDialogBox(): void {
     this.dialogBox = this.add.image(0, 0, "dialog-box");
     this.dialogBox.setDepth(100);
-    this.dialogBox.setScale(0.5);
+    this.dialogBox.setOrigin(0.5);
     this.dialogBox.setVisible(false);
     this.dialogBox.setScrollFactor(0);
 
@@ -648,6 +649,7 @@ export class MainScene extends Phaser.Scene {
       align: "center",
     });
     this.dialogText.setDepth(101);
+    this.dialogText.setOrigin(0.5);
     this.dialogText.setVisible(false);
     this.dialogText.setScrollFactor(0);
 
@@ -671,10 +673,21 @@ export class MainScene extends Phaser.Scene {
   private centerDialog(): void {
     if (!this.dialogBox) return;
     const { width, height } = this.scale;
+    const maxWidth = width * 0.08;
+    const maxHeight = height * 0.16;
+    const sourceWidth = this.dialogBox.width || 1;
+    const sourceHeight = this.dialogBox.height || 1;
+    const scaleFactor = Math.min(
+      maxWidth / sourceWidth,
+      maxHeight / sourceHeight,
+      1
+    );
+    this.dialogBox.setScale(scaleFactor);
     this.dialogBox.setPosition(width / 2, height / 2);
     if (this.dialogText) {
-      // Position text slightly above center to align with dialog box text area
-      this.dialogText.setPosition(width / 2, height / 2 - 10);
+      const verticalOffset = 20 * scaleFactor;
+      this.dialogText.setPosition(width / 2, height / 2 - verticalOffset);
+      this.dialogText.setWordWrapWidth(sourceWidth * scaleFactor * 0.7);
     }
   }
 

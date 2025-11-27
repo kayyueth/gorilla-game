@@ -675,11 +675,6 @@ export class MainScene extends Phaser.Scene {
       },
     });
 
-    // Scale to fit screen and center
-    this.messageBox.fitToScreen();
-    this.messageBox.centerOnScreen();
-
-    // Initially hide it
     this.messageBox.hide();
 
     // Create text with the pixel font (kept separate for now)
@@ -695,6 +690,12 @@ export class MainScene extends Phaser.Scene {
     this.dialogText.setVisible(false);
     this.dialogText.setScrollFactor(0);
 
+    const hudOnlyElements: Array<Phaser.GameObjects.GameObject> = [];
+    if (this.messageBox) hudOnlyElements.push(this.messageBox);
+    if (this.dialogText) hudOnlyElements.push(this.dialogText);
+    this.cameras.main.ignore(hudOnlyElements);
+
+    // Single entry point for layout; keeps resize handler consistent.
     this.centerDialog();
     this.scale.on("resize", this.centerDialog, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {

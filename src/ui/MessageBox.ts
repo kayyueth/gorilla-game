@@ -44,8 +44,8 @@ export class MessageBox extends Phaser.GameObjects.Container {
       closeIconPaddingY = 0,
       depth = 100,
       onConfirm,
-      maxWidthPercent = 0.08,
-      maxHeightPercent = 0.16,
+      maxWidthPercent = 1,
+      maxHeightPercent = 1,
     } = config;
 
     super(scene, x, y);

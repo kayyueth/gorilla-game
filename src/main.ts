@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { IntroScene } from "./scenes/IntroScene";
 import { MainScene } from "./scenes/MainScene";
 
 function launch(): Phaser.Game {
@@ -14,7 +15,7 @@ function launch(): Phaser.Game {
       width: window.innerWidth,
       height: window.innerHeight,
     },
-    scene: [MainScene],
+    scene: [IntroScene, MainScene],
     physics: {
       default: "arcade",
       arcade: {

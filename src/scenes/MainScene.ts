@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import gorillaPurpleAltSheet from "@assets/gorilla.png";
 import dialogBoxTexture from "@assets/dialog box.png";
+import { MessageBox } from "../ui/MessageBox";
 
 const TILESET_CONFIG = [
   { name: "Hills", key: "tiles-hills", file: "Hills.png" },
@@ -143,7 +144,7 @@ export class MainScene extends Phaser.Scene {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private player!: Phaser.Physics.Arcade.Sprite;
   private lastDirection: Direction = "down";
-  private dialogBox?: Phaser.GameObjects.Image;
+  private messageBox?: MessageBox;
   private dialogText?: Phaser.GameObjects.Text;
   private isDialogOpen: boolean = false;
   private spaceKey?: Phaser.Input.Keyboard.Key;
@@ -175,6 +176,7 @@ export class MainScene extends Phaser.Scene {
       }
     );
     this.load.image("dialog-box", dialogBoxTexture);
+    this.load.image("button-normal", "button-normal.png");
   }
 
   create(): void {
@@ -634,13 +636,27 @@ export class MainScene extends Phaser.Scene {
   }
 
   private createDialogBox(): void {
-    this.dialogBox = this.add.image(0, 0, "dialog-box");
-    this.dialogBox.setDepth(100);
-    this.dialogBox.setOrigin(0.5);
-    this.dialogBox.setVisible(false);
-    this.dialogBox.setScrollFactor(0);
+    // Create MessageBox with button positioned at bottom-right
+    this.messageBox = new MessageBox({
+      scene: this,
+      backgroundTexture: "dialog-box",
+      buttonTexture: "button-normal",
+      buttonPaddingX: 20, // Easy to tweak: distance from right edge
+      buttonPaddingY: 20, // Easy to tweak: distance from bottom edge
+      depth: 100,
+      onConfirm: () => {
+        this.hideDialog();
+      },
+    });
 
-    // Create text with the pixel font
+    // Scale to fit screen and center
+    this.messageBox.fitToScreen();
+    this.messageBox.centerOnScreen();
+
+    // Initially hide it
+    this.messageBox.hide();
+
+    // Create text with the pixel font (kept separate for now)
     this.dialogText = this.add.text(0, 0, "", {
       // fontFamily: "PixelFont",
       fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
@@ -661,41 +677,36 @@ export class MainScene extends Phaser.Scene {
   }
 
   private showDialog(): void {
-    if (this.isDialogOpen || !this.dialogBox || !this.player) return;
+    if (this.isDialogOpen || !this.messageBox || !this.player) return;
 
     this.isDialogOpen = true;
-    this.dialogBox.setVisible(true);
+    this.messageBox.show();
     if (this.dialogText) {
       this.dialogText.setVisible(true);
     }
   }
 
   private centerDialog(): void {
-    if (!this.dialogBox) return;
+    if (!this.messageBox) return;
     const { width, height } = this.scale;
-    const maxWidth = width * 0.08;
-    const maxHeight = height * 0.16;
-    const sourceWidth = this.dialogBox.width || 1;
-    const sourceHeight = this.dialogBox.height || 1;
-    const scaleFactor = Math.min(
-      maxWidth / sourceWidth,
-      maxHeight / sourceHeight,
-      1
-    );
-    this.dialogBox.setScale(scaleFactor);
-    this.dialogBox.setPosition(width / 2, height / 2);
+
+    // Scale to fit screen and center
+    this.messageBox.fitToScreen();
+    this.messageBox.centerOnScreen();
+
+    // Position text relative to MessageBox center
     if (this.dialogText) {
-      const verticalOffset = 20 * scaleFactor;
-      this.dialogText.setPosition(width / 2, height / 2 - verticalOffset);
-      this.dialogText.setWordWrapWidth(sourceWidth * scaleFactor * 0.7);
+      this.dialogText.setPosition(width / 2, height / 2 - 20);
+      // Estimate text width based on dialog box size (can be adjusted)
+      this.dialogText.setWordWrapWidth(400);
     }
   }
 
   private hideDialog(): void {
-    if (!this.dialogBox || !this.isDialogOpen) return;
+    if (!this.messageBox || !this.isDialogOpen) return;
 
     this.isDialogOpen = false;
-    this.dialogBox.setVisible(false);
+    this.messageBox.hide();
     if (this.dialogText) {
       this.dialogText.setVisible(false);
     }

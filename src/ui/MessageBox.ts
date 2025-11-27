@@ -8,6 +8,9 @@ interface MessageBoxConfig {
   buttonTexture: string;
   buttonPaddingX?: number;
   buttonPaddingY?: number;
+  closeIconTexture?: string;
+  closeIconPaddingX?: number;
+  closeIconPaddingY?: number;
   depth?: number;
   onConfirm?: () => void;
   maxWidthPercent?: number; // Max width as percentage of screen (0-1)
@@ -17,9 +20,12 @@ interface MessageBoxConfig {
 export class MessageBox extends Phaser.GameObjects.Container {
   private background: Phaser.GameObjects.Image;
   private button: Phaser.GameObjects.Image;
+  private closeIcon?: Phaser.GameObjects.Image;
   private buttonBaseScale: number;
   private buttonPaddingX: number;
   private buttonPaddingY: number;
+  private closeIconPaddingX: number;
+  private closeIconPaddingY: number;
   private onConfirmCallback?: () => void;
   private maxWidthPercent: number;
   private maxHeightPercent: number;
@@ -33,6 +39,9 @@ export class MessageBox extends Phaser.GameObjects.Container {
       buttonTexture,
       buttonPaddingX = 20,
       buttonPaddingY = 20,
+      closeIconTexture,
+      closeIconPaddingX = 10,
+      closeIconPaddingY = 0,
       depth = 100,
       onConfirm,
       maxWidthPercent = 0.08,
@@ -55,6 +64,8 @@ export class MessageBox extends Phaser.GameObjects.Container {
     // Store padding values
     this.buttonPaddingX = buttonPaddingX;
     this.buttonPaddingY = buttonPaddingY;
+    this.closeIconPaddingX = closeIconPaddingX;
+    this.closeIconPaddingY = closeIconPaddingY;
 
     // Store callback
     this.onConfirmCallback = onConfirm;
@@ -65,9 +76,25 @@ export class MessageBox extends Phaser.GameObjects.Container {
 
     // Position button at bottom-right relative to background
     this.updateButtonPosition();
+    if (closeIconTexture) {
+      this.closeIcon = scene.add.image(0, 0, closeIconTexture);
+      this.closeIcon.setOrigin(0.5);
+      this.closeIcon.setScrollFactor(0);
+      this.closeIcon.setInteractive({ useHandCursor: true });
+      this.closeIcon.on("pointerdown", () => {
+        if (this.onConfirmCallback) this.onConfirmCallback();
+      });
+    }
+    this.updateCloseIconPosition();
 
     // Add both to container and register with scene before enabling input
-    this.add([this.background, this.button]);
+    const elements: Array<Phaser.GameObjects.Image> = [
+      this.background,
+      this.button,
+    ];
+    if (this.closeIcon) elements.splice(1, 0, this.closeIcon);
+    this.add(elements);
+    this.updateCloseIconPosition();
     scene.add.existing(this);
 
     // Make button interactive
@@ -105,20 +132,45 @@ export class MessageBox extends Phaser.GameObjects.Container {
     this.button.setPosition(buttonX, buttonY);
   }
 
+  private updateCloseIconPosition(): void {
+    if (!this.closeIcon) return;
+    const bgWidth = this.background.displayWidth;
+    const bgHeight = this.background.displayHeight;
+    const iconWidth = this.closeIcon.displayWidth;
+    const iconHeight = this.closeIcon.displayHeight;
+
+    const iconX = bgWidth / 2 - iconWidth / 2 - this.closeIconPaddingX;
+    const iconY = -bgHeight / 2 - iconHeight / 2 - this.closeIconPaddingY;
+
+    this.closeIcon.setPosition(iconX, iconY);
+  }
+
   show(): void {
     this.setVisible(true);
     this.button.setInteractive({ useHandCursor: true });
+    if (this.closeIcon) {
+      this.closeIcon.setInteractive({ useHandCursor: true });
+    }
   }
 
   hide(): void {
     this.setVisible(false);
     this.button.disableInteractive();
+    if (this.closeIcon) {
+      this.closeIcon.disableInteractive();
+    }
   }
 
   setButtonPadding(x: number, y: number): void {
     this.buttonPaddingX = x;
     this.buttonPaddingY = y;
     this.updateButtonPosition();
+  }
+
+  setCloseIconPadding(x: number, y: number): void {
+    this.closeIconPaddingX = x;
+    this.closeIconPaddingY = y;
+    this.updateCloseIconPosition();
   }
 
   setOnConfirm(callback: () => void): void {
@@ -146,10 +198,12 @@ export class MessageBox extends Phaser.GameObjects.Container {
 
     this.setScale(scaleFactor);
     this.updateButtonPosition();
+    this.updateCloseIconPosition();
   }
 
   destroy(): void {
     this.button.destroy();
+    if (this.closeIcon) this.closeIcon.destroy();
     this.background.destroy();
     super.destroy();
   }

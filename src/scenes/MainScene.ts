@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import gorillaPurpleAltSheet from "@assets/gorilla.png";
 import dialogBoxTexture from "@assets/dialog box.png";
+import deleteIconTexture from "@assets/delete.png";
 import { MessageBox } from "../ui/MessageBox";
 
 const TILESET_CONFIG = [
@@ -177,6 +178,7 @@ export class MainScene extends Phaser.Scene {
     );
     this.load.image("dialog-box", dialogBoxTexture);
     this.load.image("button-normal", "button-normal.png");
+    this.load.image("dialog-delete", deleteIconTexture);
   }
 
   create(): void {
@@ -643,6 +645,9 @@ export class MainScene extends Phaser.Scene {
       buttonTexture: "button-normal",
       buttonPaddingX: 20, // Easy to tweak: distance from right edge
       buttonPaddingY: 20, // Easy to tweak: distance from bottom edge
+      closeIconTexture: "dialog-delete",
+      closeIconPaddingX: 12,
+      closeIconPaddingY: 8,
       depth: 100,
       onConfirm: () => {
         this.hideDialog();

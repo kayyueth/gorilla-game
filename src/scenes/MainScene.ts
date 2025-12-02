@@ -1,10 +1,19 @@
 import Phaser from "phaser";
 import gorillaPurpleAltSheet from "@assets/gorilla.png";
 import dialogBoxTexture from "@assets/dialog box.png";
-import deleteIconTexture from "@assets/delete.png";
-import connectWalletTexture from "@assets/connect-wallet.png";
-import aboutProjectTexture from "@assets/about-project.png";
+import deleteIconTexture from "@assets/btn-close.png";
+import connectWalletTexture from "@assets/btn-connect-wallet.png";
+import aboutProjectTexture from "@assets/btn-about-project.png";
+import heartButtonTexture from "@assets/btn-collection.png";
+import rescureButtonTexture from "@assets/btn-rescure.png";
+import pageAboutProjectTexture from "@assets/page-about-project.png";
+import bgTexture from "@assets/bg.png";
+import bgCardTexture from "@assets/bg-card.png";
+import nftImageTexture from "@assets/NFT-1.png";
+import priceTagTexture from "@assets/price-tag.png";
+import heartTexture from "@assets/heart.png";
 import { MessageBox } from "../ui/MessageBox";
+import { NFTCard } from "../ui/NFTCard";
 
 const TILESET_CONFIG = [
   { name: "Hills", key: "tiles-hills", file: "Hills.png" },
@@ -160,6 +169,14 @@ export class MainScene extends Phaser.Scene {
   private isPlayerOverlappingNpc: boolean = false;
   private connectWalletButton?: Phaser.GameObjects.Image;
   private aboutProjectButton?: Phaser.GameObjects.Image;
+  private heartButton?: Phaser.GameObjects.Image;
+  private aboutProjectPopup?: Phaser.GameObjects.Image;
+  private aboutProjectCloseButton?: Phaser.GameObjects.Image;
+  private isAboutProjectPopupOpen: boolean = false;
+  private collectionPopup?: Phaser.GameObjects.Image;
+  private collectionCloseButton?: Phaser.GameObjects.Image;
+  private isCollectionPopupOpen: boolean = false;
+  private nftCard?: NFTCard;
   private readonly uiButtonScale: number = 1;
   private readonly uiButtonHoverMultiplier: number = 1.08;
   private hudCamera?: Phaser.Cameras.Scene2D.Camera;
@@ -184,10 +201,17 @@ export class MainScene extends Phaser.Scene {
       }
     );
     this.load.image("dialog-box", dialogBoxTexture);
-    this.load.image("button-normal", "button-normal.png");
+    this.load.image("button-rescure", rescureButtonTexture);
     this.load.image("dialog-delete", deleteIconTexture);
     this.load.image("connect-wallet", connectWalletTexture);
     this.load.image("about-project", aboutProjectTexture);
+    this.load.image("heart-button", heartButtonTexture);
+    this.load.image("page-about-project", pageAboutProjectTexture);
+    this.load.image("bg", bgTexture);
+    this.load.image("bg-card", bgCardTexture);
+    this.load.image("nft-image", nftImageTexture);
+    this.load.image("price-tag", priceTagTexture);
+    this.load.image("heart-icon", heartTexture);
   }
 
   create(): void {
@@ -253,11 +277,30 @@ export class MainScene extends Phaser.Scene {
     // Create dialog box (initially hidden)
     this.createDialogBox();
     this.createCornerButtons();
+    this.createLeftBottomButton();
+    this.createAboutProjectPopup();
+    this.createCollectionPopup();
     this.excludeButtonsFromWorldCamera();
   }
 
   update(): void {
     if (!this.player || !this.cursors) return;
+
+    // Handle about project popup closing
+    if (this.isAboutProjectPopupOpen) {
+      if (this.escKey && Phaser.Input.Keyboard.JustDown(this.escKey)) {
+        this.hideAboutProjectPopup();
+      }
+      return;
+    }
+
+    // Handle collection popup closing
+    if (this.isCollectionPopupOpen) {
+      if (this.escKey && Phaser.Input.Keyboard.JustDown(this.escKey)) {
+        this.hideCollectionPopup();
+      }
+      return;
+    }
 
     // Handle dialog closing
     if (this.isDialogOpen) {
@@ -663,7 +706,7 @@ export class MainScene extends Phaser.Scene {
     this.messageBox = new MessageBox({
       scene: this,
       backgroundTexture: "dialog-box",
-      buttonTexture: "button-normal",
+      buttonTexture: "button-rescure",
       buttonPaddingX: 20, // Easy to tweak: distance from right edge
       buttonPaddingY: 20, // Easy to tweak: distance from bottom edge
       closeIconTexture: "dialog-delete",
@@ -792,7 +835,7 @@ export class MainScene extends Phaser.Scene {
       this.events.emit("ui:connect-wallet");
     });
     aboutProject.on("pointerdown", () => {
-      this.events.emit("ui:about-project");
+      this.showAboutProjectPopup();
     });
 
     this.connectWalletButton = connectWallet;
@@ -824,11 +867,21 @@ export class MainScene extends Phaser.Scene {
   }
 
   private excludeButtonsFromWorldCamera(): void {
-    if (!this.connectWalletButton || !this.aboutProjectButton) return;
-    this.cameras.main.ignore([
-      this.connectWalletButton,
-      this.aboutProjectButton,
-    ]);
+    const buttons: Phaser.GameObjects.Image[] = [];
+    if (this.connectWalletButton) buttons.push(this.connectWalletButton);
+    if (this.aboutProjectButton) buttons.push(this.aboutProjectButton);
+    if (this.heartButton) buttons.push(this.heartButton);
+    if (this.aboutProjectPopup) buttons.push(this.aboutProjectPopup);
+    if (this.aboutProjectCloseButton)
+      buttons.push(this.aboutProjectCloseButton);
+    if (this.collectionPopup) buttons.push(this.collectionPopup);
+    if (this.collectionCloseButton) buttons.push(this.collectionCloseButton);
+    if (buttons.length > 0) {
+      this.cameras.main.ignore(buttons);
+    }
+    if (this.nftCard) {
+      this.cameras.main.ignore(this.nftCard);
+    }
   }
 
   private positionCornerButtons(): void {
@@ -856,5 +909,261 @@ export class MainScene extends Phaser.Scene {
       button.setScale(this.uiButtonScale);
       this.positionCornerButtons();
     });
+  }
+
+  private createLeftBottomButton(): void {
+    const heartButton = this.add
+      .image(0, 0, "heart-button")
+      .setOrigin(0, 1)
+      .setDepth(200)
+      .setScrollFactor(0)
+      .setInteractive({ useHandCursor: true });
+
+    heartButton.setScale(this.uiButtonScale);
+
+    heartButton.on("pointerover", () => {
+      heartButton.setScale(this.uiButtonScale * this.uiButtonHoverMultiplier);
+      this.positionLeftBottomButton();
+    });
+    heartButton.on("pointerout", () => {
+      heartButton.setScale(this.uiButtonScale);
+      this.positionLeftBottomButton();
+    });
+
+    heartButton.on("pointerdown", () => {
+      this.showCollectionPopup();
+    });
+
+    this.heartButton = heartButton;
+
+    this.positionLeftBottomButton();
+    this.scale.on("resize", this.positionLeftBottomButton, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.scale.off("resize", this.positionLeftBottomButton, this);
+    });
+  }
+
+  private positionLeftBottomButton(): void {
+    if (!this.heartButton) return;
+    const { height } = this.scale;
+    const margin = 20;
+
+    // Position at left bottom of screen
+    this.heartButton.setPosition(margin, height - margin);
+  }
+
+  private createAboutProjectPopup(): void {
+    const popup = this.add
+      .image(0, 0, "page-about-project")
+      .setOrigin(0.5)
+      .setDepth(300)
+      .setScrollFactor(0)
+      .setVisible(false);
+
+    const closeButton = this.add
+      .image(0, 0, "dialog-delete")
+      .setOrigin(0.5)
+      .setDepth(301)
+      .setScrollFactor(0)
+      .setVisible(false)
+      .setInteractive({ useHandCursor: true });
+
+    closeButton.on("pointerdown", () => {
+      this.hideAboutProjectPopup();
+    });
+
+    this.aboutProjectPopup = popup;
+    this.aboutProjectCloseButton = closeButton;
+
+    this.centerAboutProjectPopup();
+    this.scale.on("resize", this.centerAboutProjectPopup, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.scale.off("resize", this.centerAboutProjectPopup, this);
+    });
+  }
+
+  private centerAboutProjectPopup(): void {
+    if (!this.aboutProjectPopup || !this.aboutProjectCloseButton) return;
+    const { width, height } = this.scale;
+
+    // Center the popup
+    this.aboutProjectPopup.setPosition(width / 2, height / 2);
+
+    // Scale popup to fit screen (max 90% of screen width/height)
+    const maxWidth = width * 0.9;
+    const maxHeight = height * 0.9;
+    const imageWidth = this.aboutProjectPopup.width;
+    const imageHeight = this.aboutProjectPopup.height;
+
+    const scaleX = maxWidth / imageWidth;
+    const scaleY = maxHeight / imageHeight;
+    const scale = Math.min(scaleX, scaleY, 1); // Don't scale up, only down
+
+    this.aboutProjectPopup.setScale(scale);
+
+    // Position close button above the popup, aligned to the right
+    const popupDisplayWidth = this.aboutProjectPopup.displayWidth;
+    const popupDisplayHeight = this.aboutProjectPopup.displayHeight;
+    const popupTopY = height / 2 - popupDisplayHeight / 2;
+    const closeButtonDisplayHeight = this.aboutProjectCloseButton.displayHeight;
+    const spacing = 20; // Vertical spacing between button and popup
+
+    // Align to right edge of popup, position above popup vertically
+    const popupRightEdge = width / 2 + popupDisplayWidth / 2;
+    this.aboutProjectCloseButton.setPosition(
+      popupRightEdge, // Aligned to right edge of popup
+      popupTopY - closeButtonDisplayHeight / 2 - spacing // Above popup with spacing
+    );
+  }
+
+  private showAboutProjectPopup(): void {
+    if (
+      this.isAboutProjectPopupOpen ||
+      !this.aboutProjectPopup ||
+      !this.aboutProjectCloseButton
+    )
+      return;
+
+    this.isAboutProjectPopupOpen = true;
+    this.aboutProjectPopup.setVisible(true);
+    this.aboutProjectCloseButton.setVisible(true);
+    this.centerAboutProjectPopup();
+  }
+
+  private hideAboutProjectPopup(): void {
+    if (
+      !this.isAboutProjectPopupOpen ||
+      !this.aboutProjectPopup ||
+      !this.aboutProjectCloseButton
+    )
+      return;
+
+    this.isAboutProjectPopupOpen = false;
+    this.aboutProjectPopup.setVisible(false);
+    this.aboutProjectCloseButton.setVisible(false);
+  }
+
+  private createCollectionPopup(): void {
+    const popup = this.add
+      .image(0, 0, "bg")
+      .setOrigin(0.5)
+      .setDepth(300)
+      .setScrollFactor(0)
+      .setVisible(false);
+
+    const closeButton = this.add
+      .image(0, 0, "dialog-delete")
+      .setOrigin(0.5)
+      .setDepth(301)
+      .setScrollFactor(0)
+      .setVisible(false)
+      .setInteractive({ useHandCursor: true });
+
+    closeButton.on("pointerdown", () => {
+      this.hideCollectionPopup();
+    });
+
+    // Create NFT Card
+    this.nftCard = new NFTCard({
+      scene: this,
+      backgroundTexture: "bg-card",
+      nftImageTexture: "nft-image",
+      priceTagTexture: "price-tag",
+      heartTexture: "heart-icon",
+      depth: 302,
+      maxWidthPercent: 0.5,
+      maxHeightPercent: 0.7,
+    });
+    this.nftCard.hide();
+    this.nftCard.centerOnScreen();
+    this.nftCard.fitToScreen();
+
+    this.collectionPopup = popup;
+    this.collectionCloseButton = closeButton;
+
+    this.centerCollectionPopup();
+    this.scale.on(
+      "resize",
+      () => {
+        this.centerCollectionPopup();
+        if (this.nftCard) {
+          this.nftCard.centerOnScreen();
+          this.nftCard.fitToScreen();
+        }
+      },
+      this
+    );
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.scale.off("resize", this.centerCollectionPopup, this);
+    });
+  }
+
+  private centerCollectionPopup(): void {
+    if (!this.collectionPopup || !this.collectionCloseButton) return;
+    const { width, height } = this.scale;
+
+    // Center the popup
+    this.collectionPopup.setPosition(width / 2, height / 2);
+
+    // Scale popup to fit screen (max 90% of screen width/height)
+    const maxWidth = width * 0.9;
+    const maxHeight = height * 0.9;
+    const imageWidth = this.collectionPopup.width;
+    const imageHeight = this.collectionPopup.height;
+
+    const scaleX = maxWidth / imageWidth;
+    const scaleY = maxHeight / imageHeight;
+    const scale = Math.min(scaleX, scaleY, 1); // Don't scale up, only down
+
+    this.collectionPopup.setScale(scale);
+
+    // Position close button above the popup, aligned to the right
+    const popupDisplayWidth = this.collectionPopup.displayWidth;
+    const popupDisplayHeight = this.collectionPopup.displayHeight;
+    const popupTopY = height / 2 - popupDisplayHeight / 2;
+    const closeButtonDisplayHeight = this.collectionCloseButton.displayHeight;
+    const spacing = 20; // Vertical spacing between button and popup
+
+    // Align to right edge of popup, position above popup vertically
+    const popupRightEdge = width / 2 + popupDisplayWidth / 2;
+    this.collectionCloseButton.setPosition(
+      popupRightEdge, // Aligned to right edge of popup
+      popupTopY - closeButtonDisplayHeight / 2 - spacing // Above popup with spacing
+    );
+  }
+
+  private showCollectionPopup(): void {
+    if (
+      this.isCollectionPopupOpen ||
+      !this.collectionPopup ||
+      !this.collectionCloseButton
+    )
+      return;
+
+    this.isCollectionPopupOpen = true;
+    this.collectionPopup.setVisible(true);
+    this.collectionCloseButton.setVisible(true);
+    if (this.nftCard) {
+      this.nftCard.show();
+      this.nftCard.centerOnScreen();
+      this.nftCard.fitToScreen();
+    }
+    this.centerCollectionPopup();
+  }
+
+  private hideCollectionPopup(): void {
+    if (
+      !this.isCollectionPopupOpen ||
+      !this.collectionPopup ||
+      !this.collectionCloseButton
+    )
+      return;
+
+    this.isCollectionPopupOpen = false;
+    this.collectionPopup.setVisible(false);
+    this.collectionCloseButton.setVisible(false);
+    if (this.nftCard) {
+      this.nftCard.hide();
+    }
   }
 }

@@ -109,7 +109,6 @@ export class MessageBox extends Phaser.GameObjects.Container {
       this.button.setScale(this.buttonBaseScale);
     });
     this.button.on("pointerdown", () => {
-      console.log("[MessageBox] confirm button clicked");
       if (this.onConfirmCallback) this.onConfirmCallback();
     });
 
